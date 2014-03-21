@@ -15,8 +15,8 @@ setup(
     version=read('src/chuckbox/VERSION')[0],
     description='',
     author='John Hopper',
-    author_email='john.hopper@rackspace.com',
-    url='https://github.com/rackerlabs/containers',
+    author_email='john.hopper@jpserver.net',
+    url='https://github.com/zinic/chuckbox',
     license='Rackspace',
     classifiers=[
         'Development Status :: 3 - Alpha',
