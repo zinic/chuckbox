@@ -1,0 +1,15 @@
+.python-version
+docs/_build/
+build/
+dist/
+.coverage
+*.pyc
+*.so
+.idea
+*.egg-info/
+*~
+*#
+.tox
+*.DS_Store*
+nosetests.xml
+*/coverage.xml
