@@ -109,9 +109,6 @@ def _unpack(name, bctx, filename, dl_target):
 
     archive.extractall(bctx.build.root)
 
-    items = os.listdir(bctx.build.root)
-    _LOG.info(items)
-
     for br in os.listdir(bctx.build.root):
         if br.startswith(name):
             return os.path.join(bctx.build.root, br)
