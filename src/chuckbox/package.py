@@ -116,7 +116,7 @@ def _unpack(name, bctx, filename, dl_target):
         if br.startswith(name):
             return os.path.join(bctx.build.root, br)
 
-    raise Exception('ass')
+    raise Exception('Failed to identify the top-level source dir')
 
 
 def _install(req, bctx, pkg_index, stage_hooks=None):
@@ -230,4 +230,4 @@ def create(path, requirements_file, hooks, project_name, version):
 
     # Clean the build dir
     _LOG.info('Cleaning {}'.format(bctx.root))
-    # shutil.rmtree(bctx.root)
+    shutil.rmtree(bctx.root)
