@@ -1,3 +1,4 @@
+import re
 import os
 import stat
 import sys
@@ -25,6 +26,7 @@ class BuildLocations(object):
 
     def __init__(self, ctx_root):
         self.root = _mkdir(os.path.join(ctx_root, 'build'))
+        self.eggs = _mkdir(os.path.join(ctx_root, 'eggs'))
         self.dist = _mkdir(os.path.join(ctx_root, 'dist'))
         self.dist_lib = _mkdir(os.path.join(self.dist, 'lib'))
         self.dist_python = _mkdir(os.path.join(self.dist_lib, 'python'))
@@ -92,75 +94,75 @@ def _runpy(bctx, cmd_str, cwd=None):
         sys.exit(1)
 
 
-def _unpack(name, bctx, stage_hooks, filename, dl_target):
-    if dl_target.endswith('.tar.gz') or dl_target.endswith('.tgz'):
+def _unpack(name, bctx, filename, dl_target):
+    if dl_target.endswith('.tar.bz2'):
+        archive = tarfile.open(dl_target, mode='r|bz2')
+    elif dl_target.endswith('.tar.gz'):
         archive = tarfile.open(dl_target, mode='r|gz')
-        build_location = os.path.join(
-            bctx.build.root, filename.rstrip('.tar.gz'))
+    elif dl_target.endswith('.tgz'):
+        archive = tarfile.open(dl_target, mode='r|gz')
     elif dl_target.endswith('.zip'):
         archive = zipfile.ZipFile(dl_target, mode='r')
-        build_location = os.path.join(bctx.build.root, filename.rstrip('.zip'))
     else:
         _LOG.info('Unknown archive format: {}'.format(dl_target))
         raise Exception()
 
     archive.extractall(bctx.build.root)
-    return build_location
+
+    items = os.listdir(bctx.build.root)
+    _LOG.info(items)
+
+    for br in os.listdir(bctx.build.root):
+        if br.startswith(name):
+            return os.path.join(bctx.build.root, br)
+
+    raise Exception('ass')
 
 
-def _install(name, bctx, stage_hooks=None):
-    req = InstallRequirement.from_line(name, None)
+def _install(req, bctx, pkg_index, stage_hooks=None):
     found_req = bctx.pkg_index.find_requirement(req, False)
     dl_target = os.path.join(bctx.build.files, found_req.filename)
+    project_dir_name = req.req.project_name.replace('-', '_')
 
-    # stages - TODO: Clean this up with ContextManager x.x
-    _hook(name, 'download.before',
-              stage_hooks, bctx=bctx, fetch_url=found_req.url)
     _download(found_req.url, dl_target)
-    _hook(name, 'download.after',
-              stage_hooks, bctx=bctx, archive=dl_target)
+    build_location = _unpack(req.req.project_name, bctx, found_req.filename,
+        dl_target)
 
-    _hook(name, 'unpack.before',
-              stage_hooks, bctx=bctx, archive=dl_target)
-    build_location = _unpack(
-        name, bctx, stage_hooks, found_req.filename, dl_target)
-    _hook(name, 'unpack.after',
-              stage_hooks, bctx=bctx, build_location=build_location)
+    # This is a minor hack for getting the egg info from projects that
+    # store alternative versions of the setup scrips for whatever reasons.
+    if os.path.exists(os.path.join(build_location, 'setup_egg.py')):
+        _runpy(bctx,
+            'python setup_egg.py egg_info --egg-base={}'.format(bctx.build.eggs),
+            build_location)
+    else:
+        _runpy(bctx,
+            'python setup.py egg_info --egg-base={}'.format(bctx.build.eggs),
+            build_location)
 
-    _hook(name, 'build.before',
-              stage_hooks, bctx=bctx, build_location=build_location)
+    egg_info_dir = os.path.join(bctx.build.eggs, '{}.egg-info'.format(
+        project_dir_name))
+
+    requirements_file = os.path.join(egg_info_dir, 'requires.txt')
+
+    if os.path.exists(requirements_file):
+        _read_requires(requirements_file, bctx, pkg_index)
+
     _runpy(bctx,
-        'python setup.py build'.format(build_location),
+        'python setup.py install --f --home={}'.format(bctx.build.dist),
         build_location)
-    _hook(name, 'build.after',
-              stage_hooks, bctx=bctx, build_location=build_location)
-
-    _hook(name, 'install.before',
-              stage_hooks, bctx=bctx, build_location=build_location)
-    _runpy(bctx,
-        'python setup.py install --home={}'.format(bctx.build.dist),
-        build_location)
-    _hook(name, 'install.after',
-              stage_hooks, bctx=bctx, build_location=build_location)
 
 
-def _hook(name, stage, stage_hooks, **kwargs):
-    if stage_hooks:
-        if name in stage_hooks:
-            hooks = stage_hooks[name]
-            if stage in hooks:
-                hook = hooks[stage]
-                _LOG.info('Calling hook {} for stage {}'.format(hook, stage))
-                hook(kwargs)
-
-
-def _read_requires(filename, bctx, pkg_index, hooks):
+def _read_requires(filename, bctx, pkg_index, hooks=None):
     lines = open(filename, 'r').read()
 
     if lines is not None and len(lines) > 0:
         for line in lines.split('\n'):
             if line and len(line) > 0:
-                _install(line, bctx, hooks)
+                req = InstallRequirement.from_line(line)
+                try:
+                    _install(req, bctx, pkg_index, hooks)
+                except:
+                    _LOG.error('Failed on pkg: {}'.format(line))
 
 
 def _copytree(src, dst, symlinks=False):
@@ -198,8 +200,8 @@ def create(path, requirements_file, hooks, project_name, version):
     _read_requires(requirements_file, bctx, pkg_index, hooks)
 
     # Build root after requirements are finished
-    _runpy(bctx, 'python setup.py build')
-    _runpy(bctx, 'python setup.py install --home={}'.format(
+    _runpy(bctx, 'python setup.py bdist_egg')
+    _runpy(bctx, 'python setup.py install -f --home={}'.format(
         bctx.build.dist))
 
     # Copy all of the important files into their intended destinations
@@ -228,4 +230,4 @@ def create(path, requirements_file, hooks, project_name, version):
 
     # Clean the build dir
     _LOG.info('Cleaning {}'.format(bctx.root))
-    shutil.rmtree(bctx.root)
+    # shutil.rmtree(bctx.root)
