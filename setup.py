@@ -13,7 +13,7 @@ def read(relative):
 setup(
     name='chuckbox',
     version=read('src/chuckbox/VERSION')[0],
-    description='',
+    description='Sane Python Project Tools',
     author='John Hopper',
     author_email='john.hopper@jpserver.net',
     url='https://github.com/zinic/chuckbox',

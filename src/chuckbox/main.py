@@ -19,10 +19,10 @@ subparsers = argparser.add_subparsers(
     help='Tools available.')
 
 pack_parser = subparsers.add_parser('pack',
-    help='Package a project.')
+                                    help='Package a project.')
 
 pack_parser.add_argument('name',
-    help='Name of the project being packaged up.')
+                         help='Name of the project being packaged up.')
 
 pack_parser.add_argument(
     '-p', '--path',
@@ -56,7 +56,6 @@ argparser.add_argument(
 def init():
     about_cb = project.about('chuckbox')
 
-
     if len(sys.argv) > 1:
         log.get_log_manager().configure({
             'level': 'DEBUG',
@@ -70,7 +69,7 @@ def init():
 
         if args.tool_name == 'pack':
             version_file = os.path.join(
-                args.path,'src/{name}/VERSION'.format(name=args.name))
+                args.path, 'src/{name}/VERSION'.format(name=args.name))
 
             if not os.path.exists(version_file):
                 print('Unable to locate version file: {vfile}'.format(
@@ -91,6 +90,7 @@ def init():
                     vfile=version_file))
                 sys.exit(1)
 
-            package.create(args.path, REQUIREMENTS_FILE, dict(), args.name, version)
+            package.create(args.path, REQUIREMENTS_FILE, dict(),
+                           args.name, version)
     else:
         argparser.print_help()
