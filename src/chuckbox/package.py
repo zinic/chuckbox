@@ -123,18 +123,18 @@ def _install(req, bctx, pkg_index, stage_hooks=None):
 
     _download(found_req.url, dl_target)
     build_location = _unpack(req.req.project_name, bctx, found_req.filename,
-        dl_target)
+                             dl_target)
 
     # This is a minor hack for getting the egg info from projects that
     # store alternative versions of the setup scrips for whatever reasons.
     if os.path.exists(os.path.join(build_location, 'setup_egg.py')):
         _runpy(bctx,
-            'python setup_egg.py egg_info --egg-base={}'.format(bctx.build.eggs),
-            build_location)
+               'python setup_egg.py egg_info --egg-base={}'.format(bctx.build.eggs),
+               build_location)
     else:
         _runpy(bctx,
-            'python setup.py egg_info --egg-base={}'.format(bctx.build.eggs),
-            build_location)
+               'python setup.py egg_info --egg-base={}'.format(bctx.build.eggs),
+               build_location)
 
     egg_info_dir = os.path.join(bctx.build.eggs, '{}.egg-info'.format(
         project_dir_name))
@@ -145,8 +145,8 @@ def _install(req, bctx, pkg_index, stage_hooks=None):
         _read_requires(requirements_file, bctx, pkg_index)
 
     _runpy(bctx,
-        'python setup.py install --f --home={}'.format(bctx.build.dist),
-        build_location)
+           'python setup.py install --f --home={}'.format(bctx.build.dist),
+           build_location)
 
 
 def _read_requires(filename, bctx, pkg_index, hooks=None):
@@ -220,7 +220,6 @@ def create(path, requirements_file, hooks, project_name, version):
 
     # Pop back to our original working directory
     os.chdir(cwd)
-
 
     # Copy the finished tafile
     shutil.copyfile(tar_fpath, os.path.join('.', tar_filename))
